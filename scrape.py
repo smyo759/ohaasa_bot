@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
 from playwright.sync_api import sync_playwright
@@ -24,6 +25,21 @@ soup = BeautifulSoup(html, "html.parser")
 
 items = soup.select("ul.oa_horoscope_list li")
 
+SIGN_MAP = {
+    "おひつじ座": "양자리",
+    "おうし座": "황소자리",
+    "ふたご座": "쌍둥이자리",
+    "かに座": "게자리",
+    "しし座": "사자자리",
+    "おとめ座": "처녀자리",
+    "てんびん座": "천칭자리",
+    "さそり座": "전갈자리",
+    "いて座": "사수자리",
+    "やぎ座": "염소자리",
+    "みずがめ座": "물병자리",
+    "うお座": "물고기자리"
+}
+
 translator = GoogleTranslator(
     source="ja",
     target="ko"
@@ -43,6 +59,8 @@ for item in items:
         .get_text(strip=True)
     )
 
+    sign_ko = SIGN_MAP.get(sign, sign)
+
     text = (
         item.select_one(".horo_txt")
         .get_text("\t", strip=True)
@@ -56,7 +74,7 @@ for item in items:
 
     ranking.append({
         "rank": rank,
-        "sign": sign,
+        "sign": sign_ko,
         "fortune": translator.translate(fortune),
         "advice": translator.translate(advice),
         "lucky_place": translator.translate(lucky_place)
@@ -64,11 +82,11 @@ for item in items:
 
 scorpio = next(
     x for x in ranking
-    if x["sign"] == "さそり座"
+    if x["sign"] == "전갈자리"
 )
 
 data = {
-    "date": page.url if False else "",
+    "date": page.url if False else datetime.now().strftime("%Y-%m-%d"),
     "ranking": ranking,
     "scorpio": scorpio
 }
