@@ -1,3 +1,96 @@
 {
-  "ranking": []
+  "date": "",
+  "ranking": [
+    {
+      "rank": 1,
+      "sign": "かに座",
+      "fortune": "새로운 일을 시작할 수 있습니다.",
+      "advice": "친구와 함께 도전하면 좋을지도",
+      "lucky_place": "지하철역"
+    },
+    {
+      "rank": 2,
+      "sign": "さそり座",
+      "fortune": "기회가 날아갈 것 같다.",
+      "advice": "\"이거!\"라고 생각하면 즉각적인 행동",
+      "lucky_place": "침실"
+    },
+    {
+      "rank": 3,
+      "sign": "おとめ座",
+      "fortune": "미래를 생각하고 싶은 날",
+      "advice": "객관적인 시점을 소중히 하면◎",
+      "lucky_place": "정육점"
+    },
+    {
+      "rank": 4,
+      "sign": "おうし座",
+      "fortune": "좋은 인연에 축복받는 예감!",
+      "advice": "초대가 있으면 OK",
+      "lucky_place": "음악 교실"
+    },
+    {
+      "rank": 5,
+      "sign": "みずがめ座",
+      "fortune": "유익한 할인을받을 수 있습니다.",
+      "advice": "다양한 가게를 둘러 보자.",
+      "lucky_place": "도서관"
+    },
+    {
+      "rank": 6,
+      "sign": "いて座",
+      "fortune": "적극적인 행동으로 운기 UP",
+      "advice": "직감을 믿으면 잘 작동합니다.",
+      "lucky_place": "대학"
+    },
+    {
+      "rank": 7,
+      "sign": "やぎ座",
+      "fortune": "재미있는 아이디어가 떠오를 때",
+      "advice": "메모를 남겨두면 GOOD",
+      "lucky_place": "수입가구점"
+    },
+    {
+      "rank": 8,
+      "sign": "うお座",
+      "fortune": "낭비를 조심하십시오.",
+      "advice": "큰 돈을 가지고 다니는 것을 그만 둬.",
+      "lucky_place": "셀렉트 숍"
+    },
+    {
+      "rank": 9,
+      "sign": "てんびん座",
+      "fortune": "부탁받는 일을 거절하지 않고 후회할지도",
+      "advice": "내용은 확실히 확인",
+      "lucky_place": "온천"
+    },
+    {
+      "rank": 10,
+      "sign": "ふたご座",
+      "fortune": "작업이 생각하는 것처럼 진행하지 않고 꽉…",
+      "advice": "던지는 자세는 NG",
+      "lucky_place": "전문 서점"
+    },
+    {
+      "rank": 11,
+      "sign": "しし座",
+      "fortune": "자기 중심적인 태도에 주의",
+      "advice": "주위에 대한 배려를 잊지 않고",
+      "lucky_place": "공원"
+    },
+    {
+      "rank": 12,
+      "sign": "おひつじ座",
+      "fortune": "좋지 않은 소문이 흐를지도",
+      "advice": "일단 자신의 행동을 되돌아 보자.",
+      "lucky_place": "스포츠 센터"
+    }
+  ],
+  "scorpio": {
+    "rank": 2,
+    "sign": "さそり座",
+    "fortune": "기회가 날아갈 것 같다.",
+    "advice": "\"이거!\"라고 생각하면 즉각적인 행동",
+    "lucky_place": "침실"
+  }
 }
