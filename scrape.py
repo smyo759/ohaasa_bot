@@ -85,10 +85,41 @@ scorpio = next(
     if x["sign"] == "전갈자리"
 )
 
+top_text = []
+
+for item in ranking:
+    top_text.append(
+        f"{item['rank']}위 {item['sign']}"
+    )
+
+ranking_text = "\n".join(top_text)
+
+message = f"""
+🌟 오늘의 오하아사 별자리 랭킹
+
+{ranking_text}
+
+━━━━━━━━━━
+
+🦂 전갈자리 운세
+
+순위: {scorpio['rank']}위
+
+운세
+{scorpio['fortune']}
+
+조언
+{scorpio['advice']}
+
+행운의 장소
+{scorpio['lucky_place']}
+"""
+
 data = {
-    "date": page.url if False else datetime.now().strftime("%Y-%m-%d"),
+    "date": datetime.now().strftime("%Y-%m-%d"),
     "ranking": ranking,
-    "scorpio": scorpio
+    "scorpio": scorpio,
+    "message": message
 }
 
 with open(
