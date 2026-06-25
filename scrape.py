@@ -49,14 +49,10 @@ for item in items:
         "lucky_place": translator.translate(lucky_place)
     })
 
-scorpio = next(
-    x for x in ranking
-    if x["sign"] == "さそり座"
-)
+print(ranking)
 
 data = {
-    "ranking": ranking,
-    "scorpio": scorpio
+    "ranking": ranking
 }
 
 with open(
