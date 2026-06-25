@@ -5,9 +5,21 @@ from deep_translator import GoogleTranslator
 
 URL = "https://www.asahi.co.jp/ohaasa/week/horoscope/"
 
-html = requests.get(URL).text
+response = requests.get(
+    URL,
+    headers={
+        "User-Agent":
+        "Mozilla/5.0"
+    }
+)
 
-print(html[:2000])
+response.encoding = "utf-8"
+
+html = response.text
+
+print("oa_horoscope_list" in html)
+print("さそり座" in html)
+print("かに座" in html)
 
 soup = BeautifulSoup(html, "html.parser")
 
