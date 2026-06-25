@@ -26,26 +26,25 @@ SIGN_MAP = {
     "しし座": "사자자리",
     "おとめ座": "처녀자리",
     "てんびん座": "천칭자리",
-    "さそり座": "전갈자리",
+    "さそ리座": "전갈자리",
     "いて座": "사수자리",
     "やぎ座": "염소자리",
-    "みずがめ座": "물병자리",
+    "みず가め座": "물병자리",
     "うお座": "물고기자리"
 }
 
-# 한국어 별자리 이름과 요청하신 영문 고유 key 매핑 (물병자리부터 염소자리 순서 + 쌍둥이자리 추가)
-# *요청해주신 리스트에 쌍둥이자리가 빠져 있어, 흐름상 'gem'을 추가하여 12자리를 맞추었습니다.
+# 한국어 별자리 이름과 영문 고유 key 매핑
 KEY_MAP = {
     "물병자리": "aqr",
     "물고기자리": "psc",
     "양자리": "ari",
     "황소자리": "tau",
-    "쌍둥이자리": "gem",  # 12자리 구성을 위해 추가
+    "쌍둥이자리": "gem",
     "게자리": "cnc",
     "사자자리": "leo",
     "처녀자리": "vir",
     "천칭자리": "lib",
-    "전갈자리": "sco",  # scorpio에서 sco로 변경
+    "전갈자리": "sco",
     "사수자리": "sgr",
     "염소자리": "cap"
 }
@@ -95,8 +94,7 @@ for item in ranking:
     key = KEY_MAP.get(sign_ko)
     
     if key:
-        emoji = EMOJI_MAP.get(key, "✨")
-        # 전갈자리와 동일한 양식의 개별 메시지 텍스트 동적 생성
+        # EMOJI_MAP을 지우고 모든 별자리 타이틀에 반짝이(✨) 이모지를 일괄 적용했습니다.
         message_text = f"""
 오하아사 전체순위 ✨
 
@@ -104,7 +102,7 @@ for item in ranking:
 
 ━━━━━━━━━━
 
-{sign_ko} 운세
+✨ {sign_ko} 운세
 
 {item['rank']}위 {sign_ko}
 
@@ -114,7 +112,6 @@ for item in ranking:
 🍀 {item['lucky_place']}
 """.strip()
 
-        # 딕셔너리에 데이터와 텍스트를 함께 저장
         zodiac_data[key] = {
             "rank": item["rank"],
             "sign": sign_ko,
@@ -128,10 +125,10 @@ for item in ranking:
 data = {
     "date": datetime.now().strftime("%Y-%m-%d"),
     "ranking": ranking,
-    "zodiac": zodiac_data  # aqr, psc, sco 등 고유 key로 접근 가능한 딕셔너리
+    "zodiac": zodiac_data
 }
 
 with open("fortune.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-print("모든 별자리 key 대응 운세 데이터 수집이 완료되었습니다!")
+print("EMOJI_MAP 제거 및 코드 수정이 완료되었습니다!")
