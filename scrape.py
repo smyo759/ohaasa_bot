@@ -11,6 +11,8 @@ soup = BeautifulSoup(html, "html.parser")
 
 items = soup.select("ul.oa_horoscope_list li")
 
+print("items:", len(items))
+
 ranking = []
 
 translator = GoogleTranslator(
