@@ -96,8 +96,6 @@ for item in ranking:
 
 ━━━━━━━━━━
 
-✨ {sign_ko} 운세
-
 {item['rank']}위 {sign_ko}
 
 {item['fortune']}
