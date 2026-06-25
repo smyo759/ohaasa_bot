@@ -95,7 +95,7 @@ for item in ranking:
 ranking_text = "\n".join(top_text)
 
 message = f"""
-🌟 오늘의 오하아사 별자리 랭킹
+오하아사 전체순위 ✨
 
 {ranking_text}
 
@@ -108,7 +108,7 @@ message = f"""
 {scorpio['fortune']}
 {scorpio['advice']}
 
-{scorpio['lucky_place']}
+🍀 {scorpio['lucky_place']}
 """
 
 data = {
