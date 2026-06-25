@@ -7,6 +7,8 @@ URL = "https://www.asahi.co.jp/ohaasa/week/horoscope/"
 
 html = requests.get(URL).text
 
+print(html[:2000])
+
 soup = BeautifulSoup(html, "html.parser")
 
 items = soup.select("ul.oa_horoscope_list li")
