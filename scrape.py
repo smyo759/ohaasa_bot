@@ -17,37 +17,21 @@ with sync_playwright() as p:
 soup = BeautifulSoup(html, "html.parser")
 items = soup.select("ul.oa_horoscope_list li")
 
-# 일본어 별자리 명칭 매핑
-SIGN_MAP = {
-    "おひつじ座": "양자리",
-    "おうし座": "황소자리",
-    "ふたご座": "쌍둥이자리",
-    "かに座": "게자리",
-    "しし座": "사자자리",
-    "おとめ座": "처녀자리",
-    "てんびん座": "천칭자리",
-    "さそ리座": "전갈자리",
-    "いて座": "사수자리",
-    "やぎ座": "염소자리",
-    "みず가め座": "물병자리",
-    "うお座": "물고기자리"
-}
-
-# 한국어 별자리 이름과 영문 고유 key 매핑
-KEY_MAP = {
-    "물병자리": "aqr",
-    "물고기자리": "psc",
-    "양자리": "ari",
-    "황소자리": "tau",
-    "쌍둥이자리": "gem",
-    "게자리": "cnc",
-    "사자자리": "leo",
-    "처녀자리": "vir",
-    "천칭자리": "lib",
-    "전갈자리": "sco",
-    "사수자리": "sgr",
-    "염소자리": "cap"
-}
+# [핵심 보완] 원본 문자열에 아래 키워드가 "포함"되어 있으면 해당 별자리로 확정합니다.
+ZODIAC_MASTER = [
+    {"keyword": "みずがめ", "ko": "물병자리", "key": "aqr"},
+    {"keyword": "うお", "ko": "물고기자리", "key": "psc"},
+    {"keyword": "おひつじ", "ko": "양자리", "key": "ari"},
+    {"keyword": "おうし", "ko": "황소자리", "key": "tau"},
+    {"keyword": "ふたご", "ko": "쌍둥이자리", "key": "gem"},
+    {"keyword": "かに", "ko": "게자리", "key": "cnc"},
+    {"keyword": "しし", "ko": "사자자리", "key": "leo"},
+    {"keyword": "おとめ", "ko": "처녀자리", "key": "vir"},
+    {"keyword": "てんびん", "ko": "천칭자리", "key": "lib"},
+    {"keyword": "さそり", "ko": "전갈자리", "key": "sco"},
+    {"keyword": "いて", "ko": "사수자리", "key": "sgr"},
+    {"keyword": "やぎ", "ko": "염소자리", "key": "cap"}
+]
 
 translator = GoogleTranslator(source="ja", target="ko")
 ranking = []
@@ -62,8 +46,18 @@ for item in items:
         continue
 
     rank = int(rank_el.get_text(strip=True))
-    sign = sign_el.get_text(strip=True)
-    sign_ko = SIGN_MAP.get(sign, sign)
+    sign_ja = sign_el.get_text(strip=True)
+
+    # 매핑 데이터 초기화
+    sign_ko = "알 수 없음"
+    eng_key = None
+
+    # 포함 검사 방식으로 일치하는 별자리 찾기 (오류 최소화 방식)
+    for info in ZODIAC_MASTER:
+        if info["keyword"] in sign_ja:
+            sign_ko = info["ko"]
+            eng_key = info["key"]
+            break
 
     text = txt_el.get_text("\t", strip=True)
     parts = [x.strip() for x in text.split("\t") if x.strip()]
@@ -75,6 +69,7 @@ for item in items:
     ranking.append({
         "rank": rank,
         "sign": sign_ko,
+        "key": eng_key,  # 임시로 key를 내부에 저장해둡니다.
         "fortune": translator.translate(fortune) if fortune else "",
         "advice": translator.translate(advice) if advice else "",
         "lucky_place": translator.translate(lucky_place) if lucky_place else ""
@@ -90,11 +85,10 @@ ranking_text = "\n".join(top_text)
 # 3. 각 별자리 key별 대응 데이터 및 텍스트 자동 생성
 zodiac_data = {}
 for item in ranking:
+    key = item["key"]
     sign_ko = item["sign"]
-    key = KEY_MAP.get(sign_ko)
     
     if key:
-        # EMOJI_MAP을 지우고 모든 별자리 타이틀에 반짝이(✨) 이모지를 일괄 적용했습니다.
         message_text = f"""
 오하아사 전체순위 ✨
 
@@ -124,11 +118,11 @@ for item in ranking:
 # 4. JSON 저장 구조 설정
 data = {
     "date": datetime.now().strftime("%Y-%m-%d"),
-    "ranking": ranking,
+    "ranking": [{k: v for k, v in item.items() if k != "key"} for item in ranking], # 임시 key 제외 후 저장
     "zodiac": zodiac_data
 }
 
 with open("fortune.json", "w", encoding="utf-8") as f:
     json.dump(data, f, ensure_ascii=False, indent=2)
 
-print("EMOJI_MAP 제거 및 코드 수정이 완료되었습니다!")
+print("포함 검사 매핑 방식으로 수정 및 데이터 수집 완료되었습니다!")
