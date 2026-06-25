@@ -18,6 +18,13 @@ response.encoding = "utf-8"
 html = response.text
 
 print("oa_horoscope_list" in html)
+
+idx = html.find("oa_horoscope_list")
+
+print("index:", idx)
+
+print(html[idx-500:idx+2000])
+
 print("さそり座" in html)
 print("かに座" in html)
 
