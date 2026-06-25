@@ -103,15 +103,11 @@ message = f"""
 
 🦂 전갈자리 운세
 
-순위: {scorpio['rank']}위
+{scorpio['rank']}위 전갈자리
 
-운세
 {scorpio['fortune']}
-
-조언
 {scorpio['advice']}
 
-행운의 장소
 {scorpio['lucky_place']}
 """
 
