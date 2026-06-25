@@ -2,8 +2,8 @@ name: Daily Fortune Crawler
 
 on:
   schedule:
-    # 한국 시간 기준 매일 오전 7시 30분에 실행 (UTC 기준 전날 오후 10시 30분)
-    - cron: '30 22 * * *'
+    # 한국 시간 기준 매일 오전 6시 00분에 실행 (UTC 기준 전날 오후 9시 00분)
+    - cron: '00 21 * * *'
   workflow_dispatch: # 필요할 때 언제든 버튼을 눌러 수동으로 실행할 수 있는 옵션
 
 jobs:
