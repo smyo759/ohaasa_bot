@@ -1,36 +1,59 @@
-name: Daily Fortune Crawler
+name: 오하아사 크롤러 자동화
 
 on:
   schedule:
-    # 한국 시간 기준 매일 오전 6시 00분에 실행 (UTC 기준 전날 오후 9시 00분)
-    - cron: '00 21 * * *'
-  workflow_dispatch: # 필요할 때 언제든 버튼을 눌러 수동으로 실행할 수 있는 옵션
+    # 2026년 최신 문법에 맞춰 한국 시간(Asia/Seoul) 오전 5시 50분으로 정확히 타임존을 지정합니다.
+    - cron: '50 5 * * *'
+      timezone: 'Asia/Seoul'
+  workflow_dispatch: # 필요할 때 깃허브 웹에서 수동으로 실행(Run workflow)할 수 있는 버튼을 만듭니다.
 
 jobs:
-  run-crawler:
+  update:
     runs-on: ubuntu-latest
 
     steps:
-    - name: 저장소 코드 가져오기
+    # 1. 저장소의 최신 소스코드 가져오기
+    - name: 저장소 체크아웃
       uses: actions/checkout@v4
 
-    - name: 파이썬 설정
+    # 2. 파이썬 개발 환경 구축
+    - name: 파이썬 3.10 설치
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
-    - name: 의존성 패키지 설치
+    # 3. 크롤링 및 번역에 필요한 라이브러리 일괄 설치
+    - name: 의존성 라이브러리 설치
       run: |
         python -m pip install --upgrade pip
-        pip install beautifulsoup4 deep-translator playwright
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    # 4. 동적 웹 크롤링을 위한 Playwright 브라우저 엔진 설치
+    - name: Playwright 크롬 엔진 설치
+      run: |
+        pip install playwright
         playwright install chromium
 
-    - name: 크롤러 실행
-      run: python scrape.py # 👈 파일 이름을 scrape.py로 맞추었습니다.
+    # 5. 수정한 크롤러 파이썬 스크립트 실행 (데이터 가공 및 JSON 생성)
+    - name: 크롤러(scrape.py) 실행
+      run: python scrape.py
 
-    - name: 변경사항(JSON)을 깃허브에 커밋 및 푸시
+    # 6. 푸시 튕김 현상(git rejected)을 방지하는 안전 커밋 및 푸시 시스템
+    - name: 변경사항(fortune.json)을 깃허브에 커밋 및 푸시
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
+        
+        # 새로 바뀐 fortune.json 파일만 스테이징에 올립니다.
         git add fortune.json
-        git diff --quiet && git diff --staged --quiet || (git commit -m "Update fortune.json ($(date +'%Y-%m-%d'))" && git push)
+        
+        # 변경사항이 실제 존재할 때만 커밋 및 푸시를 진행합니다.
+        if ! git diff --quiet || ! git diff --staged --quiet; then
+          git commit -m "Update fortune.json ($(date +'%Y-%m-%d %H:%M'))"
+          
+          # 푸시하기 직전에 원격 저장소의 최신본을 한번 당겨와(rebase) 충돌을 원천 차단합니다.
+          git pull --rebase origin main
+          git push origin main
+        else
+          echo "업데이트할 변경사항이 없습니다."
+        fi
