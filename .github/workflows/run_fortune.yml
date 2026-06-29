@@ -2,10 +2,10 @@ name: 오하아사 크롤러 자동화
 
 on:
   schedule:
-    # 2026년 최신 문법에 맞춰 한국 시간(Asia/Seoul) 오전 5시 50분으로 정확히 타임존을 지정합니다.
-    - cron: '50 5 * * *'
-      timezone: 'Asia/Seoul'
-  workflow_dispatch: # 필요할 때 깃허브 웹에서 수동으로 실행(Run workflow)할 수 있는 버튼을 만듭니다.
+    # 한국 시간(KST) 오전 5시 50분 = 영국 표준시(UTC) 전날 오후 8시 50분 (20:50)
+    # 깃허브 액션은 오직 UTC 기준 cron만 정확하게 인식합니다.
+    - cron: '50 20 * * *'
+  workflow_dispatch: # 필요할 때 언제든 수동으로 실행할 수 있는 버튼
 
 jobs:
   update:
@@ -34,24 +34,20 @@ jobs:
         pip install playwright
         playwright install chromium
 
-    # 5. 수정한 크롤러 파이썬 스크립트 실행 (데이터 가공 및 JSON 생성)
+    # 5. 수정한 크롤러 파이썬 스크립트 실행
     - name: 크롤러(scrape.py) 실행
       run: python scrape.py
 
-    # 6. 푸시 튕김 현상(git rejected)을 방지하는 안전 커밋 및 푸시 시스템
+    # 6. 푸시 튕김 현상을 방지하는 안전 커밋 및 푸시 시스템
     - name: 변경사항(fortune.json)을 깃허브에 커밋 및 푸시
       run: |
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
         git config --local user.name "github-actions[bot]"
         
-        # 새로 바뀐 fortune.json 파일만 스테이징에 올립니다.
         git add fortune.json
         
-        # 변경사항이 실제 존재할 때만 커밋 및 푸시를 진행합니다.
         if ! git diff --quiet || ! git diff --staged --quiet; then
           git commit -m "Update fortune.json ($(date +'%Y-%m-%d %H:%M'))"
-          
-          # 푸시하기 직전에 원격 저장소의 최신본을 한번 당겨와(rebase) 충돌을 원천 차단합니다.
           git pull --rebase origin main
           git push origin main
         else
