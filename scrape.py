@@ -1,9 +1,10 @@
 import json
+import time
 from datetime import datetime
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
+from deep_translator.exceptions import TranslationNotFound
 from playwright.sync_api import sync_playwright
-
 URL = "https://www.asahi.co.jp/ohaasa/week/horoscope/"
 
 # 1. 웹 크롤링
@@ -34,6 +35,33 @@ ZODIAC_MASTER = [
 ]
 
 translator = GoogleTranslator(source="ja", target="ko")
+
+
+def safe_translate(text):
+    if not text:
+        return ""
+
+    # Google 번역이 일시적으로 결과를 반환하지 못하는 경우를 대비해 재시도
+    for attempt in range(2):
+        try:
+            return translator.translate(text)
+
+        except TranslationNotFound:
+            if attempt == 0:
+                time.sleep(2)
+            else:
+                print(f"[번역 실패] 원문을 그대로 사용합니다: {text}")
+                return text
+
+        except Exception as e:
+            if attempt == 0:
+                time.sleep(2)
+            else:
+                print(f"[번역 오류] 원문을 그대로 사용합니다: {text}")
+                print(f"오류 내용: {e}")
+                return text
+
+
 ranking = []
 
 # 2. 데이터 가공 및 번역
@@ -70,9 +98,9 @@ for item in items:
         "rank": rank,
         "sign": sign_ko,
         "key": eng_key,  # 임시로 key를 내부에 저장해둡니다.
-        "fortune": translator.translate(fortune) if fortune else "",
-        "advice": translator.translate(advice) if advice else "",
-        "lucky_place": translator.translate(lucky_place) if lucky_place else ""
+        "fortune": safe_translate(fortune),
+        "advice": safe_translate(advice),
+        "lucky_place": safe_translate(lucky_place)
     })
 
 # 순위 순서대로 정렬 (1위 ~ 12위)
