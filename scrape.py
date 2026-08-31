@@ -94,13 +94,24 @@ for item in items:
     advice = parts[1] if len(parts) > 1 else ""
     lucky_place = parts[-1] if len(parts) > 2 else ""
 
+        # 운세와 조언을 하나로 묶어서 한 번만 번역
+    fortune_advice = f"{fortune} ||| {advice}"
+    translated_fortune_advice = safe_translate(fortune_advice)
+    translated_parts = translated_fortune_advice.split("|||")
+
+    translated_fortune = translated_parts[0].strip() if len(translated_parts) > 0 else ""
+    translated_advice = translated_parts[1].strip() if len(translated_parts) > 1 else ""
+
+    # 행운의 장소는 별도로 번역
+    translated_lucky_place = safe_translate(lucky_place)
+
     ranking.append({
         "rank": rank,
         "sign": sign_ko,
-        "key": eng_key,  # 임시로 key를 내부에 저장해둡니다.
-        "fortune": safe_translate(fortune),
-        "advice": safe_translate(advice),
-        "lucky_place": safe_translate(lucky_place)
+        "key": eng_key,
+        "fortune": translated_fortune,
+        "advice": translated_advice,
+        "lucky_place": translated_lucky_place
     })
 
 # 순위 순서대로 정렬 (1위 ~ 12위)
