@@ -170,57 +170,178 @@ for item in items:
 raw_items.sort(key=lambda x: x["rank"])
 
 
-# 3. 운세 + 조언 전체를 하나의 텍스트로 만들어 한 번에 번역
-fortune_blocks = []
+# 3. 운세 + 조언 번역
+def translate_in_batches(items, field, batch_size=3):
+    """
+    항목을 3개씩 묶어서 번역한다.
+    일반적인 경우 번역 요청을 크게 줄이면서도
+    한 번에 너무 긴 텍스트를 보내지 않도록 한다.
+    """
 
-for item in raw_items:
-    fortune = normalize_text(item["fortune"])
-    advice = normalize_text(item["advice"])
+    results = [""] * len(items)
 
-    combined = "\n".join(
-        part for part in [fortune, advice] if part
-    )
+    for start in range(0, len(items), batch_size):
+        batch = items[start:start + batch_size]
 
-    fortune_blocks.append(
-        f"[{item['rank']}]\n{combined}"
-    )
+        blocks = []
+
+        for item in batch:
+            if field == "fortune":
+                fortune = normalize_text(item["fortune"])
+                advice = normalize_text(item["advice"])
+
+                combined = "\n".join(
+                    part for part in [fortune, advice] if part
+                )
+
+                blocks.append(
+                    f"[{item['rank']}]\n{combined}"
+                )
+
+            elif field == "lucky_place":
+                lucky_place = normalize_text(item["lucky_place"])
+
+                blocks.append(
+                    f"[{item['rank']}]\n{lucky_place}"
+                )
+
+        source = "\n\n".join(blocks)
+
+        print(
+            f"[번역] {field} "
+            f"{batch[0]['rank']}~{batch[-1]['rank']}위 번역 중..."
+        )
+
+        translated_text = translate_long_text(source)
+
+        translated_batch = parse_numbered_translation(
+            translated_text,
+            len(batch)
+        )
+
+        # 번호별 번역 결과를 원래 순서에 맞게 저장
+        for item, translated in zip(batch, translated_batch):
+            index = items.index(item)
+
+            if translated:
+                results[index] = translated
+
+        # 배치 전체가 제대로 파싱되지 않은 경우
+        # 해당 3개만 개별 번역
+        for item in batch:
+            index = items.index(item)
+
+            if results[index]:
+                continue
+
+            if field == "fortune":
+                fortune = normalize_text(item["fortune"])
+                advice = normalize_text(item["advice"])
+
+                combined = "\n".join(
+                    part for part in [fortune, advice] if part
+                )
+
+                if combined:
+                    try:
+                        print(
+                            f"[개별 번역 재시도] "
+                            f"{item['rank']}위 운세"
+                        )
+
+                        results[index] = translator.translate(
+                            combined
+                        ).strip()
+
+                    except Exception as e:
+                        print(
+                            f"[개별 번역 실패] "
+                            f"{item['rank']}위 운세: {e}"
+                        )
+
+            elif field == "lucky_place":
+                lucky_place = normalize_text(item["lucky_place"])
+
+                if lucky_place:
+                    try:
+                        print(
+                            f"[개별 번역 재시도] "
+                            f"{item['rank']}위 행운의 장소"
+                        )
+
+                        results[index] = translator.translate(
+                            lucky_place
+                        ).strip()
+
+                    except Exception as e:
+                        print(
+                            f"[개별 번역 실패] "
+                            f"{item['rank']}위 행운의 장소: {e}"
+                        )
+
+    return results
 
 
-fortune_source = "\n\n".join(fortune_blocks)
+print("[번역 1/2] 운세/조언을 3개씩 묶어서 번역합니다.")
 
-print("[번역 1/2] 12개 운세/조언을 한 번에 번역합니다.")
-
-translated_fortune_text = translate_long_text(fortune_source)
-
-translated_fortunes = parse_numbered_translation(
-    translated_fortune_text,
-    len(raw_items)
+translated_fortunes = translate_in_batches(
+    raw_items,
+    "fortune",
+    batch_size=3
 )
 
 
-# 4. 행운의 장소 전체를 하나의 텍스트로 만들어 한 번에 번역
-lucky_place_blocks = []
+print("[번역 2/2] 행운의 장소를 3개씩 묶어서 번역합니다.")
 
-for item in raw_items:
-    lucky_place = normalize_text(item["lucky_place"])
-
-    lucky_place_blocks.append(
-        f"[{item['rank']}]\n{lucky_place}"
-    )
-
-
-lucky_place_source = "\n\n".join(lucky_place_blocks)
-
-print("[번역 2/2] 12개 행운의 장소를 한 번에 번역합니다.")
-
-translated_lucky_place_text = translate_long_text(
-    lucky_place_source
+translated_lucky_places = translate_in_batches(
+    raw_items,
+    "lucky_place",
+    batch_size=3
 )
 
-translated_lucky_places = parse_numbered_translation(
-    translated_lucky_place_text,
-    len(raw_items)
-)
+
+# 4. 번역 결과 적용
+for index, item in enumerate(raw_items):
+
+    translated_fortune = translated_fortunes[index]
+
+    # 번역 결과가 없는 경우 원문 사용
+    if not translated_fortune:
+        translated_fortune = "\n".join(
+            part for part in [
+                item["fortune"],
+                item["advice"]
+            ]
+            if part
+        )
+
+        print(
+            f"[번역 결과 누락] "
+            f"{item['sign']} 운세는 원문을 사용합니다."
+        )
+
+    translated_lucky_place = translated_lucky_places[index]
+
+    # 행운의 장소 번역 결과가 없는 경우 원문 사용
+    if not translated_lucky_place:
+        translated_lucky_place = item["lucky_place"]
+
+        print(
+            f"[번역 결과 누락] "
+            f"{item['sign']} 행운의 장소는 원문을 사용합니다."
+        )
+
+    ranking.append({
+        "rank": item["rank"],
+        "sign": item["sign"],
+        "key": item["key"],
+        "fortune": translated_fortune,
+        "advice": "",
+        "lucky_place": translated_lucky_place
+    })
+
+
+ranking.sort(key=lambda x: x["rank"])
 
 
 # 5. 번역 결과 적용
