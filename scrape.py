@@ -1,5 +1,6 @@
 import json
 import time
+import re
 import unicodedata
 from datetime import datetime
 from bs4 import BeautifulSoup
@@ -23,7 +24,6 @@ items = soup.select("ul.oa_horoscope_list li")
 
 
 ZODIAC_MASTER = [
-    {"keyword": "みずほ", "ko": "물병자리", "key": "aqr"},
     {"keyword": "みずがめ", "ko": "물병자리", "key": "aqr"},
     {"keyword": "うお", "ko": "물고기자리", "key": "psc"},
     {"keyword": "おひつじ", "ko": "양자리", "key": "ari"},
@@ -42,14 +42,26 @@ ZODIAC_MASTER = [
 translator = GoogleTranslator(source="ja", target="ko")
 
 
-def safe_translate(text):
+def normalize_text(text):
+    """
+    전각 문자 등을 일반 문자로 정규화하고
+    앞뒤 공백을 제거한다.
+    """
     if not text:
         return ""
 
-    # 전각 영문/숫자 등을 일반 문자로 정규화
-    text = unicodedata.normalize("NFKC", text)
+    return unicodedata.normalize("NFKC", text).strip()
 
-    # Google 번역이 일시적으로 결과를 반환하지 못하는 경우 재시도
+
+def translate_long_text(text):
+    """
+    여러 문장을 하나의 번역 요청으로 처리한다.
+    """
+    if not text:
+        return ""
+
+    text = normalize_text(text)
+
     for attempt in range(2):
         try:
             result = translator.translate(text)
@@ -59,26 +71,65 @@ def safe_translate(text):
 
         except TranslationNotFound:
             if attempt == 0:
+                print("[번역 재시도] Google 번역 결과를 받지 못했습니다.")
                 time.sleep(2)
             else:
-                print(f"[번역 실패] 원문을 그대로 사용합니다: {text}")
+                print("[전체 번역 실패] 원문을 그대로 사용합니다.")
                 return text
 
         except Exception as e:
             if attempt == 0:
+                print("[번역 재시도] 오류가 발생했습니다.")
+                print(f"오류 내용: {e}")
                 time.sleep(2)
             else:
-                print(f"[번역 오류] 원문을 그대로 사용합니다: {text}")
+                print("[전체 번역 오류] 원문을 그대로 사용합니다.")
                 print(f"오류 내용: {e}")
                 return text
 
     return text
 
 
+def parse_numbered_translation(text, count):
+    """
+    [1], [2], [3] ... 형식으로 번역된 텍스트를
+    각각의 항목으로 분리한다.
+
+    예:
+    [1]
+    번역문 1
+
+    [2]
+    번역문 2
+    """
+
+    results = [""] * count
+
+    if not text:
+        return results
+
+    pattern = re.compile(
+        r"\[\s*(\d+)\s*\]\s*(.*?)(?=\[\s*\d+\s*\]|$)",
+        re.DOTALL
+    )
+
+    matches = pattern.findall(text)
+
+    for number, content in matches:
+        index = int(number) - 1
+
+        if 0 <= index < count:
+            results[index] = content.strip()
+
+    return results
+
+
 ranking = []
 
 
-# 2. 데이터 가공 및 번역
+# 2. 데이터 가공
+raw_items = []
+
 for item in items:
     rank_el = item.select_one(".horo_rank")
     sign_el = item.select_one(".horo_name")
@@ -106,25 +157,110 @@ for item in items:
     advice = parts[1] if len(parts) > 1 else ""
     lucky_place = parts[-1] if len(parts) > 2 else ""
 
-    # 운세와 조언을 하나의 텍스트로 묶어서 번역
-    fortune_text = "\n".join(
-        part for part in [fortune, advice] if part
-    )
-
-    translated_fortune = safe_translate(fortune_text)
-
-    # 조언은 운세와 합쳐서 저장하므로 별도 필드는 비워 둠
-    translated_advice = ""
-
-    # 행운의 장소는 별도로 번역
-    translated_lucky_place = safe_translate(lucky_place)
-
-    ranking.append({
+    raw_items.append({
         "rank": rank,
         "sign": sign_ko,
         "key": eng_key,
+        "fortune": fortune,
+        "advice": advice,
+        "lucky_place": lucky_place
+    })
+
+
+raw_items.sort(key=lambda x: x["rank"])
+
+
+# 3. 운세 + 조언 전체를 하나의 텍스트로 만들어 한 번에 번역
+fortune_blocks = []
+
+for item in raw_items:
+    fortune = normalize_text(item["fortune"])
+    advice = normalize_text(item["advice"])
+
+    combined = "\n".join(
+        part for part in [fortune, advice] if part
+    )
+
+    fortune_blocks.append(
+        f"[{item['rank']}]\n{combined}"
+    )
+
+
+fortune_source = "\n\n".join(fortune_blocks)
+
+print("[번역 1/2] 12개 운세/조언을 한 번에 번역합니다.")
+
+translated_fortune_text = translate_long_text(fortune_source)
+
+translated_fortunes = parse_numbered_translation(
+    translated_fortune_text,
+    len(raw_items)
+)
+
+
+# 4. 행운의 장소 전체를 하나의 텍스트로 만들어 한 번에 번역
+lucky_place_blocks = []
+
+for item in raw_items:
+    lucky_place = normalize_text(item["lucky_place"])
+
+    lucky_place_blocks.append(
+        f"[{item['rank']}]\n{lucky_place}"
+    )
+
+
+lucky_place_source = "\n\n".join(lucky_place_blocks)
+
+print("[번역 2/2] 12개 행운의 장소를 한 번에 번역합니다.")
+
+translated_lucky_place_text = translate_long_text(
+    lucky_place_source
+)
+
+translated_lucky_places = parse_numbered_translation(
+    translated_lucky_place_text,
+    len(raw_items)
+)
+
+
+# 5. 번역 결과 적용
+for index, item in enumerate(raw_items):
+
+    translated_fortune = translated_fortunes[index]
+
+    # 번역 결과가 특정 번호에서 누락된 경우
+    # 해당 별자리의 원문을 사용한다.
+    if not translated_fortune:
+        translated_fortune = "\n".join(
+            part for part in [
+                item["fortune"],
+                item["advice"]
+            ]
+            if part
+        )
+
+        print(
+            f"[번역 결과 누락] "
+            f"{item['sign']} 운세는 원문을 사용합니다."
+        )
+
+    translated_lucky_place = translated_lucky_places[index]
+
+    # 행운의 장소 번역 결과가 누락된 경우 원문 사용
+    if not translated_lucky_place:
+        translated_lucky_place = item["lucky_place"]
+
+        print(
+            f"[번역 결과 누락] "
+            f"{item['sign']} 행운의 장소는 원문을 사용합니다."
+        )
+
+    ranking.append({
+        "rank": item["rank"],
+        "sign": item["sign"],
+        "key": item["key"],
         "fortune": translated_fortune,
-        "advice": translated_advice,
+        "advice": "",
         "lucky_place": translated_lucky_place
     })
 
@@ -132,10 +268,16 @@ for item in items:
 ranking.sort(key=lambda x: x["rank"])
 
 
-top_text = [f"{item['rank']}위 {item['sign']}" for item in ranking]
+# 6. 전체 순위 텍스트
+top_text = [
+    f"{item['rank']}위 {item['sign']}"
+    for item in ranking
+]
+
 ranking_text = "\n".join(top_text)
 
 
+# 7. 별자리별 데이터 생성
 zodiac_data = {}
 
 for item in ranking:
@@ -167,10 +309,15 @@ for item in ranking:
         }
 
 
+# 8. JSON 생성
 data = {
     "date": datetime.now().strftime("%Y-%m-%d"),
     "ranking": [
-        {k: v for k, v in item.items() if k != "key"}
+        {
+            k: v
+            for k, v in item.items()
+            if k != "key"
+        }
         for item in ranking
     ],
     "zodiac": zodiac_data
@@ -178,7 +325,13 @@ data = {
 
 
 with open("fortune.json", "w", encoding="utf-8") as f:
-    json.dump(data, f, ensure_ascii=False, indent=2)
+    json.dump(
+        data,
+        f,
+        ensure_ascii=False,
+        indent=2
+    )
+    f.write("\n")
 
 
 print("오하아사 운세 데이터 수집 및 번역 완료되었습니다!")
