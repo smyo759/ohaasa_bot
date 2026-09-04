@@ -344,51 +344,6 @@ for index, item in enumerate(raw_items):
 ranking.sort(key=lambda x: x["rank"])
 
 
-# 5. 번역 결과 적용
-for index, item in enumerate(raw_items):
-
-    translated_fortune = translated_fortunes[index]
-
-    # 번역 결과가 특정 번호에서 누락된 경우
-    # 해당 별자리의 원문을 사용한다.
-    if not translated_fortune:
-        translated_fortune = "\n".join(
-            part for part in [
-                item["fortune"],
-                item["advice"]
-            ]
-            if part
-        )
-
-        print(
-            f"[번역 결과 누락] "
-            f"{item['sign']} 운세는 원문을 사용합니다."
-        )
-
-    translated_lucky_place = translated_lucky_places[index]
-
-    # 행운의 장소 번역 결과가 누락된 경우 원문 사용
-    if not translated_lucky_place:
-        translated_lucky_place = item["lucky_place"]
-
-        print(
-            f"[번역 결과 누락] "
-            f"{item['sign']} 행운의 장소는 원문을 사용합니다."
-        )
-
-    ranking.append({
-        "rank": item["rank"],
-        "sign": item["sign"],
-        "key": item["key"],
-        "fortune": translated_fortune,
-        "advice": "",
-        "lucky_place": translated_lucky_place
-    })
-
-
-ranking.sort(key=lambda x: x["rank"])
-
-
 # 6. 전체 순위 텍스트
 top_text = [
     f"{item['rank']}위 {item['sign']}"
