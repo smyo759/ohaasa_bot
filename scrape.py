@@ -22,6 +22,21 @@ with sync_playwright() as p:
 soup = BeautifulSoup(html, "html.parser")
 items = soup.select("ul.oa_horoscope_list li")
 
+# 같은 순위가 여러 번 크롤링되는 경우 첫 번째 항목만 사용
+unique_items = {}
+
+for item in items:
+    rank_el = item.select_one(".horo_rank")
+
+    if not rank_el:
+        continue
+
+    rank = int(rank_el.get_text(strip=True))
+
+    if rank not in unique_items:
+        unique_items[rank] = item
+
+items = list(unique_items.values())
 
 ZODIAC_MASTER = [
     {"keyword": "みずがめ", "ko": "물병자리", "key": "aqr"},
