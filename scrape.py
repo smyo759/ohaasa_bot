@@ -1,11 +1,9 @@
 import json
 import time
-import re
 import unicodedata
 from datetime import datetime
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
-from deep_translator.exceptions import TranslationNotFound
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.asahi.co.jp/ohaasa/week/horoscope/"
@@ -53,75 +51,39 @@ def normalize_text(text):
     return unicodedata.normalize("NFKC", text).strip()
 
 
-def translate_long_text(text):
+def translate_text(text, label=""):
     """
-    여러 문장을 하나의 번역 요청으로 처리한다.
+    텍스트를 한국어로 번역한다.
+    번역 실패 시 최대 3번 시도하고,
+    모두 실패하면 원문을 사용한다.
     """
     if not text:
         return ""
 
     text = normalize_text(text)
 
-    for attempt in range(2):
+    for attempt in range(3):
         try:
             result = translator.translate(text)
 
             if result:
                 return result.strip()
 
-        except TranslationNotFound:
-            if attempt == 0:
-                print("[번역 재시도] Google 번역 결과를 받지 못했습니다.")
-                time.sleep(2)
-            else:
-                print("[전체 번역 실패] 원문을 그대로 사용합니다.")
-                return text
-
         except Exception as e:
-            if attempt == 0:
-                print("[번역 재시도] 오류가 발생했습니다.")
-                print(f"오류 내용: {e}")
+            print(
+                f"[번역 실패 {attempt + 1}/3] "
+                f"{label}: {e}"
+            )
+
+            if attempt < 2:
                 time.sleep(2)
-            else:
-                print("[전체 번역 오류] 원문을 그대로 사용합니다.")
-                print(f"오류 내용: {e}")
-                return text
 
-    return text
-
-
-def parse_numbered_translation(text, count):
-    """
-    [1], [2], [3] ... 형식으로 번역된 텍스트를
-    각각의 항목으로 분리한다.
-
-    예:
-    [1]
-    번역문 1
-
-    [2]
-    번역문 2
-    """
-
-    results = [""] * count
-
-    if not text:
-        return results
-
-    pattern = re.compile(
-        r"\[\s*(\d+)\s*\]\s*(.*?)(?=\[\s*\d+\s*\]|$)",
-        re.DOTALL
+    print(
+        f"[최종 번역 실패] "
+        f"{label} - 원문을 사용합니다."
     )
 
-    matches = pattern.findall(text)
-
-    for number, content in matches:
-        index = int(number) - 1
-
-        if 0 <= index < count:
-            results[index] = content.strip()
-
-    return results
+    return text
 
 
 ranking = []
@@ -170,167 +132,45 @@ for item in items:
 raw_items.sort(key=lambda x: x["rank"])
 
 
-# 3. 운세 + 조언 번역
-def translate_in_batches(items, field, batch_size=3):
-    """
-    항목을 3개씩 묶어서 번역한다.
-    일반적인 경우 번역 요청을 크게 줄이면서도
-    한 번에 너무 긴 텍스트를 보내지 않도록 한다.
-    """
+# 3. 운세 + 조언 / 행운의 장소 번역
+for item in raw_items:
 
-    results = [""] * len(items)
+    # 운세와 조언을 하나의 문장으로 합친다.
+    combined_fortune = "\n".join(
+        part
+        for part in [
+            normalize_text(item["fortune"]),
+            normalize_text(item["advice"])
+        ]
+        if part
+    )
 
-    for start in range(0, len(items), batch_size):
-        batch = items[start:start + batch_size]
+    print(
+        f"[번역] {item['rank']}위 "
+        f"{item['sign']} 운세/조언 번역 중..."
+    )
 
-        blocks = []
+    translated_fortune = translate_text(
+        combined_fortune,
+        f"{item['rank']}위 {item['sign']} 운세"
+    )
 
-        for item in batch:
-            if field == "fortune":
-                fortune = normalize_text(item["fortune"])
-                advice = normalize_text(item["advice"])
+    time.sleep(1)
 
-                combined = "\n".join(
-                    part for part in [fortune, advice] if part
-                )
+    print(
+        f"[번역] {item['rank']}위 "
+        f"{item['sign']} 행운의 장소 번역 중..."
+    )
 
-                blocks.append(
-                    f"[{item['rank']}]\n{combined}"
-                )
+    translated_lucky_place = translate_text(
+        item["lucky_place"],
+        f"{item['rank']}위 {item['sign']} 행운의 장소"
+    )
 
-            elif field == "lucky_place":
-                lucky_place = normalize_text(item["lucky_place"])
-
-                blocks.append(
-                    f"[{item['rank']}]\n{lucky_place}"
-                )
-
-        source = "\n\n".join(blocks)
-
-        print(
-            f"[번역] {field} "
-            f"{batch[0]['rank']}~{batch[-1]['rank']}위 번역 중..."
-        )
-
-        translated_text = translate_long_text(source)
-
-        translated_batch = parse_numbered_translation(
-            translated_text,
-            len(batch)
-        )
-
-        # 번호별 번역 결과를 원래 순서에 맞게 저장
-        for item, translated in zip(batch, translated_batch):
-            index = items.index(item)
-
-            if translated:
-                results[index] = translated
-
-        # 배치 전체가 제대로 파싱되지 않은 경우
-        # 해당 3개만 개별 번역
-        for item in batch:
-            index = items.index(item)
-
-            if results[index]:
-                continue
-
-            if field == "fortune":
-                fortune = normalize_text(item["fortune"])
-                advice = normalize_text(item["advice"])
-
-                combined = "\n".join(
-                    part for part in [fortune, advice] if part
-                )
-
-                if combined:
-                    try:
-                        print(
-                            f"[개별 번역 재시도] "
-                            f"{item['rank']}위 운세"
-                        )
-
-                        results[index] = translator.translate(
-                            combined
-                        ).strip()
-
-                    except Exception as e:
-                        print(
-                            f"[개별 번역 실패] "
-                            f"{item['rank']}위 운세: {e}"
-                        )
-
-            elif field == "lucky_place":
-                lucky_place = normalize_text(item["lucky_place"])
-
-                if lucky_place:
-                    try:
-                        print(
-                            f"[개별 번역 재시도] "
-                            f"{item['rank']}위 행운의 장소"
-                        )
-
-                        results[index] = translator.translate(
-                            lucky_place
-                        ).strip()
-
-                    except Exception as e:
-                        print(
-                            f"[개별 번역 실패] "
-                            f"{item['rank']}위 행운의 장소: {e}"
-                        )
-
-    return results
+    time.sleep(1)
 
 
-print("[번역 1/2] 운세/조언을 3개씩 묶어서 번역합니다.")
-
-translated_fortunes = translate_in_batches(
-    raw_items,
-    "fortune",
-    batch_size=3
-)
-
-
-print("[번역 2/2] 행운의 장소를 3개씩 묶어서 번역합니다.")
-
-translated_lucky_places = translate_in_batches(
-    raw_items,
-    "lucky_place",
-    batch_size=3
-)
-
-
-# 4. 번역 결과 적용
-for index, item in enumerate(raw_items):
-
-    translated_fortune = translated_fortunes[index]
-
-    # 번역 결과가 없는 경우 원문 사용
-    if not translated_fortune:
-        translated_fortune = "\n".join(
-            part for part in [
-                item["fortune"],
-                item["advice"]
-            ]
-            if part
-        )
-
-        print(
-            f"[번역 결과 누락] "
-            f"{item['sign']} 운세는 원문을 사용합니다."
-        )
-
-    translated_lucky_place = translated_lucky_places[index]
-
-    # 행운의 장소 번역 결과가 없는 경우 원문 사용
-    if not translated_lucky_place:
-        translated_lucky_place = item["lucky_place"]
-
-        print(
-            f"[번역 결과 누락] "
-            f"{item['sign']} 행운의 장소는 원문을 사용합니다."
-        )
-
+    # 4. 번역 결과 적용
     ranking.append({
         "rank": item["rank"],
         "sign": item["sign"],
@@ -344,7 +184,7 @@ for index, item in enumerate(raw_items):
 ranking.sort(key=lambda x: x["rank"])
 
 
-# 6. 전체 순위 텍스트
+# 5. 전체 순위 텍스트
 top_text = [
     f"{item['rank']}위 {item['sign']}"
     for item in ranking
@@ -353,7 +193,7 @@ top_text = [
 ranking_text = "\n".join(top_text)
 
 
-# 7. 별자리별 데이터 생성
+# 6. 별자리별 데이터 생성
 zodiac_data = {}
 
 for item in ranking:
@@ -385,7 +225,7 @@ for item in ranking:
         }
 
 
-# 8. JSON 생성
+# 7. JSON 생성
 data = {
     "date": datetime.now().strftime("%Y-%m-%d"),
     "ranking": [
