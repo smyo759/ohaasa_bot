@@ -4,6 +4,7 @@ import unicodedata
 from datetime import datetime
 from bs4 import BeautifulSoup
 from deep_translator import GoogleTranslator
+from deep_translator.exceptions import TranslationNotFound
 from playwright.sync_api import sync_playwright
 
 URL = "https://www.asahi.co.jp/ohaasa/week/horoscope/"
@@ -53,35 +54,51 @@ def normalize_text(text):
 
 def translate_text(text, label=""):
     """
-    텍스트를 한국어로 번역한다.
-    번역 실패 시 최대 3번 시도하고,
-    모두 실패하면 원문을 사용한다.
+    텍스트를 번역한다.
+    번역에 실패하면 2초 후 한 번 재시도하고,
+    그래도 실패하면 원문을 사용한다.
     """
     if not text:
         return ""
 
     text = normalize_text(text)
 
-    for attempt in range(3):
+    for attempt in range(2):
         try:
             result = translator.translate(text)
 
             if result:
                 return result.strip()
 
-        except Exception as e:
-            print(
-                f"[번역 실패 {attempt + 1}/3] "
-                f"{label}: {e}"
-            )
-
-            if attempt < 2:
+        except TranslationNotFound:
+            if attempt == 0:
+                print(
+                    f"[번역 재시도] "
+                    f"{label}: Google 번역 결과를 받지 못했습니다."
+                )
                 time.sleep(2)
+            else:
+                print(
+                    f"[전체 번역 실패] "
+                    f"{label}: 원문을 그대로 사용합니다."
+                )
+                return text
 
-    print(
-        f"[최종 번역 실패] "
-        f"{label} - 원문을 사용합니다."
-    )
+        except Exception as e:
+            if attempt == 0:
+                print(
+                    f"[번역 재시도] "
+                    f"{label}: 오류가 발생했습니다."
+                )
+                print(f"오류 내용: {e}")
+                time.sleep(2)
+            else:
+                print(
+                    f"[전체 번역 오류] "
+                    f"{label}: 원문을 그대로 사용합니다."
+                )
+                print(f"오류 내용: {e}")
+                return text
 
     return text
 
@@ -135,7 +152,7 @@ raw_items.sort(key=lambda x: x["rank"])
 # 3. 운세 + 조언 / 행운의 장소 번역
 for item in raw_items:
 
-    # 운세와 조언을 하나의 문장으로 합친다.
+    # 운세와 조언을 하나로 합친다.
     combined_fortune = "\n".join(
         part
         for part in [
